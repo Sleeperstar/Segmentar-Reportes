@@ -69,13 +69,21 @@ def procesar_reportes_provincia(archivo_excel_cargado, zona_seleccionada):
         if base_filtrada_por_zona.empty:
             log_output.append(f"ALERTA: No se encontraron registros en la hoja 'BASE' para la zona '{zona_seleccionada}'.")
             return None, log_output
-        lista_departamentos = base_filtrada_por_zona['DEPARTAMENTO'].dropna().unique().tolist()
+        
+        # Corrección: Aseguramos que trabajamos con una Serie de Pandas
+        lista_departamentos = pd.Series(base_filtrada_por_zona['DEPARTAMENTO']).dropna().unique().tolist()
         lista_departamentos.sort(key=len, reverse=True)
         df_reporte_total['AGENCIA_BASE'] = df_reporte_total['AGENCIA'].apply(lambda x: get_agencia_base(x, lista_departamentos))
-        base_filtrada_por_zona['ASESOR_NORMALIZADO'] = base_filtrada_por_zona['ASESOR'].apply(normalizar_nombre)
+        
+        # Aplicamos la misma corrección para futuras operaciones
+        asesores_normalizados = pd.Series(base_filtrada_por_zona['ASESOR']).apply(normalizar_nombre)
+        base_filtrada_por_zona = base_filtrada_por_zona.assign(ASESOR_NORMALIZADO=asesores_normalizados)
+
         agencias_de_la_zona = base_filtrada_por_zona['ASESOR_NORMALIZADO'].dropna().unique().tolist()
+        
+        # Continuamos con la lógica, asegurando el tipo correcto donde sea necesario
         df_reporte_total['AGENCIA_BASE_NORMALIZADA'] = df_reporte_total['AGENCIA_BASE'].apply(normalizar_nombre)
-        reporte_filtrado_por_zona = df_reporte_total[df_reporte_total['AGENCIA_BASE_NORMALIZADA'].isin(agencias_de_la_zona)]
+        reporte_filtrado_por_zona = df_reporte_total[df_reporte_total['AGENCIA_BASE_NORMALIZADA'].isin(agencias_de_la_zona)].copy()
         if reporte_filtrado_por_zona.empty:
             log_output.append(f"ALERTA: No se encontraron datos en la hoja 'Reporte CORTE 1' para las agencias de la zona '{zona_seleccionada}'.")
             return None, log_output
@@ -101,19 +109,20 @@ def procesar_reportes_provincia(archivo_excel_cargado, zona_seleccionada):
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
         for agencia_base_norm in agencias_base_a_procesar:
-            reporte_agencia = reporte_filtrado_por_zona[reporte_filtrado_por_zona['AGENCIA_BASE_NORMALIZADA'] == agencia_base_norm]
+            reporte_agencia = reporte_filtrado_por_zona[reporte_filtrado_por_zona['AGENCIA_BASE_NORMALIZADA'] == agencia_base_norm].copy()
             
             # ==============================================================================
             # === MEJORA CLAVE: Usamos el mapa de alias para buscar en la BASE ===
             # ==============================================================================
             if agencia_base_norm in mapeo_asesor_alias:
                 nombres_a_buscar = mapeo_asesor_alias[agencia_base_norm]
-                base_agencia = base_filtrada_por_zona[base_filtrada_por_zona['ASESOR_NORMALIZADO'].isin(nombres_a_buscar)]
+                base_agencia = base_filtrada_por_zona[base_filtrada_por_zona['ASESOR_NORMALIZADO'].isin(nombres_a_buscar)].copy()
             else:
                 # Si no está en el mapa, se usa la lógica normal
-                base_agencia = base_filtrada_por_zona[base_filtrada_por_zona['ASESOR_NORMALIZADO'] == agencia_base_norm]
+                base_agencia = base_filtrada_por_zona[base_filtrada_por_zona['ASESOR_NORMALIZADO'] == agencia_base_norm].copy()
             
-            base_agencia_final = base_agencia.drop(columns=['ASESOR_NORMALIZADO'], errors='ignore')[columnas_a_mantener_en_base[:-1]]
+            base_agencia_sin_asesor = base_agencia.drop(columns=['ASESOR_NORMALIZADO'], errors='ignore')
+            base_agencia_final = base_agencia_sin_asesor[columnas_a_mantener_en_base[:-1]]
             
             try:
                 altas_reporte = reporte_agencia['ALTAS'].sum()
@@ -125,10 +134,12 @@ def procesar_reportes_provincia(archivo_excel_cargado, zona_seleccionada):
             except Exception as e:
                 log_output.append(f"Error validando la agencia '{agencia_base_norm}': {e}")
                 
-            nombre_original_agencia = reporte_agencia['AGENCIA_BASE'].iloc[0]
+            nombre_original_agencia = pd.Series(reporte_agencia['AGENCIA_BASE']).iloc[0]
             output_buffer = io.BytesIO()
             with pd.ExcelWriter(output_buffer, engine='xlsxwriter') as writer:
-                reporte_agencia.drop(columns=['AGENCIA_BASE', 'AGENCIA_BASE_NORMALIZADA'], errors='ignore').to_excel(writer, sheet_name='Reporte Agencia', index=False)
+                # Corrección final: guardar el resultado de drop en una variable intermedia
+                reporte_agencia_final = reporte_agencia.drop(columns=['AGENCIA_BASE', 'AGENCIA_BASE_NORMALIZADA'], errors='ignore')
+                reporte_agencia_final.to_excel(writer, sheet_name='Reporte Agencia', index=False)
                 base_agencia_final.to_excel(writer, sheet_name='BASE', index=False)
             zf.writestr(f"Reporte {nombre_original_agencia.strip()}.xlsx", output_buffer.getvalue())
             

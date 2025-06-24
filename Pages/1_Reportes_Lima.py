@@ -67,9 +67,9 @@ def procesar_archivos_excel(archivo_excel_cargado):
                 else: log_output.append(f"DESCUADRE | {agencia:<40} | ALTAS: {altas_reporte:<5} | Registros BASE: {registros_base:<5} | REVISAR")
             except Exception as e: log_output.append(f"Error validando la agencia '{agencia}': {e}")
             output_buffer = io.BytesIO()
-            with pd.ExcelWriter(output_buffer, engine='xlsxwriter') as writer:
-                reporte_agencia.to_excel(writer, sheet_name='Reporte Agencia', index=False)
-                base_agencia_final.to_excel(writer, sheet_name='BASE', index=False)
+            with pd.ExcelWriter(output_buffer, engine='xlsxwriter') as writer: # type: ignore
+                reporte_agencia.to_excel(writer, sheet_name='Reporte Agencia', index=False) # type: ignore
+                base_agencia_final.to_excel(writer, sheet_name='BASE', index=False) # type: ignore
                 workbook, worksheet = writer.book, writer.sheets['Reporte Agencia']
                 percent_format, number_format = workbook.add_format({'num_format': '0.00%'}), workbook.add_format({'num_format': '#,##0.00'})
                 header = list(reporte_agencia.columns)
