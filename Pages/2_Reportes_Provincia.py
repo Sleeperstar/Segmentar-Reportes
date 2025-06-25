@@ -103,7 +103,7 @@ def procesar_reportes_provincia(archivo_excel_cargado, zona_seleccionada):
         log_output.append(f"ERROR: No se encontró una columna esencial como 'RECIBO1_PAGADO'. Error: {e}")
         return None, log_output
         
-    agencias_base_a_procesar = reporte_filtrado_por_zona['AGENCIA_BASE_NORMALIZADA'].dropna().unique().tolist()
+    agencias_base_a_procesar = pd.Series(reporte_filtrado_por_zona['AGENCIA_BASE_NORMALIZADA']).dropna().unique().tolist()
     log_output.append(f"Se van a generar reportes para {len(agencias_base_a_procesar)} agencias base (normalizadas).")
     
     zip_buffer = io.BytesIO()
@@ -121,7 +121,7 @@ def procesar_reportes_provincia(archivo_excel_cargado, zona_seleccionada):
                 # Si no está en el mapa, se usa la lógica normal
                 base_agencia = base_filtrada_por_zona[base_filtrada_por_zona['ASESOR_NORMALIZADO'] == agencia_base_norm].copy()
             
-            base_agencia_sin_asesor = base_agencia.drop(columns=['ASESOR_NORMALIZADO'], errors='ignore')
+            base_agencia_sin_asesor = pd.DataFrame(base_agencia).drop(columns=['ASESOR_NORMALIZADO'], errors='ignore')
             base_agencia_final = base_agencia_sin_asesor[columnas_a_mantener_en_base[:-1]]
             
             try:
@@ -136,9 +136,9 @@ def procesar_reportes_provincia(archivo_excel_cargado, zona_seleccionada):
                 
             nombre_original_agencia = pd.Series(reporte_agencia['AGENCIA_BASE']).iloc[0]
             output_buffer = io.BytesIO()
-            with pd.ExcelWriter(output_buffer, engine='xlsxwriter') as writer:
+            with pd.ExcelWriter(output_buffer, engine='xlsxwriter') as writer: # type: ignore
                 # Corrección final: guardar el resultado de drop en una variable intermedia
-                reporte_agencia_final = reporte_agencia.drop(columns=['AGENCIA_BASE', 'AGENCIA_BASE_NORMALIZADA'], errors='ignore')
+                reporte_agencia_final = pd.DataFrame(reporte_agencia).drop(columns=['AGENCIA_BASE', 'AGENCIA_BASE_NORMALIZADA'], errors='ignore')
                 reporte_agencia_final.to_excel(writer, sheet_name='Reporte Agencia', index=False)
                 base_agencia_final.to_excel(writer, sheet_name='BASE', index=False)
             zf.writestr(f"Reporte {nombre_original_agencia.strip()}.xlsx", output_buffer.getvalue())
