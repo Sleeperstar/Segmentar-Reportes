@@ -17,7 +17,7 @@ with st.sidebar:
     st.info("Selecciona el tipo de reporte que deseas procesar en el menú de arriba.")
 
 # --- CONTENIDO PRINCIPAL DE LA PÁGINA DE BIENVENIDA ---
-st.title("Bienvenido a la Herramienta de Automatización del corte de los Reportes")
+st.title("Bienvenido a la Herramienta de Automatización del cortee de los Reportes")
 
 st.markdown("---")
 
