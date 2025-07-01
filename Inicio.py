@@ -1,3 +1,4 @@
+# streamlit_app: Inicio
 # app.py (Página Principal)
 import streamlit as st
 
@@ -16,7 +17,7 @@ with st.sidebar:
     st.info("Selecciona el tipo de reporte que deseas procesar en el menú de arriba.")
 
 # --- CONTENIDO PRINCIPAL DE LA PÁGINA DE BIENVENIDA ---
-st.title("Bienvenido a la Herramienta de Automatización de Reportes")
+st.title("Bienvenido a la Herramienta de Automatización del corte de los Reportes")
 
 st.markdown("---")
 
